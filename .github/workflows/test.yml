@@ -1,4 +1,4 @@
-name: Test
+name: Test + Deploy
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
       PYTHONPATH: .
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -45,3 +45,30 @@ jobs:
       - name: Run tests
         run: |
           pytest -v
+
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/tasks/docker
+
+            git pull origin master
+
+            podman build -t myapp .
+
+            podman stop myapp-container || true
+            podman rm myapp-container || true
+
+            podman run -d \
+              --name myapp-container \
+              -p 60080:8097 \
+              myapp
