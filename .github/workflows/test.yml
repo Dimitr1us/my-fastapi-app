@@ -1,15 +1,32 @@
-name: Tests
+name: Test
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ "main", "master" ]
   pull_request:
 
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kubsu
+          POSTGRES_PASSWORD: kubsu
+          POSTGRES_DB: kubsu
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U kubsu"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu
+      PYTHONPATH: .
 
     steps:
       - name: Checkout
@@ -20,11 +37,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies (pip-based)
+      - name: Install dependencies
         run: |
-          pip install -e .
-          pip install pytest pytest-asyncio httpx sqlalchemy
+          pip install -U pip
+          pip install -e .[test]
 
       - name: Run tests
         run: |
-          PYTHONPATH=. pytest
+          pytest -v
