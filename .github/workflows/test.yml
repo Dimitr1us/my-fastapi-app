@@ -1,9 +1,11 @@
-name: Test
+name: Tests
 
 on:
   push:
     branches:
+      - main
       - master
+  pull_request:
 
 jobs:
   test:
@@ -18,10 +20,12 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Poetry
+        run: pip install poetry
+
       - name: Install dependencies
-        run: |
-          pip install -e .[test]
+        run: poetry install --with test
 
       - name: Run tests
         run: |
-          pytest
+          PYTHONPATH=. poetry run pytest
