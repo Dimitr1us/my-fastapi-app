@@ -1,0 +1,75 @@
+name: Test + Deploy
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: kubsu
+          POSTGRES_PASSWORD: kubsu
+          POSTGRES_DB: kubsu
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U kubsu"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://kubsu:kubsu@localhost:5432/kubsu
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -U pip
+          pip install -e .[test]
+
+      - name: Run tests
+        run: |
+          pytest -v
+
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 58529
+          script: |
+            cd ~/tasks/docker
+
+            git pull origin master
+
+            podman build -t myapp .
+
+            podman stop myapp-container || true
+            podman rm myapp-container || true
+
+            podman run -d \
+              --name myapp-container \
+              -p 60080:8097 \
+              myapp
