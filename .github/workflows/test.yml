@@ -49,17 +49,12 @@ jobs:
 
   deploy:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 58529
-          script: |
+      - name: Deploy via SSH from WSL runner
+        run: |
+          ssh -p 58529 robinson@kubsu.tyvik.ru << 'EOF'
             cd ~/tasks/docker
 
             git pull origin master
@@ -73,3 +68,4 @@ jobs:
               --name myapp-container \
               -p 60080:8097 \
               myapp
+          EOF
