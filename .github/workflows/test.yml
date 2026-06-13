@@ -40,21 +40,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create docker network
-        run: docker network create testnet
-
       - name: Start PostgreSQL
         run: |
           docker run -d \
             --name postgres \
-            --network testnet \
             -e POSTGRES_USER=kubsu \
             -e POSTGRES_PASSWORD=kubsu \
             -e POSTGRES_DB=kubsu \
+            -p 5432:5432 \
             postgres:16
 
           echo "Waiting for Postgres..."
-          for i in {1..30}; do
+          for i in {1..20}; do
             docker exec postgres pg_isready -U kubsu && break
             sleep 2
           done
@@ -65,17 +62,13 @@ jobs:
       - name: Run tests in container
         run: |
           docker run --rm \
-            --network testnet \
-            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@postgres:5432/kubsu \
+            --network host \
+            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@127.0.0.1:5432/kubsu \
             $IMAGE pytest -v
 
-      - name: Stop Postgres
+      - name: Stop PostgreSQL
         if: always()
-        run: docker rm -f postgres || true
-
-      - name: Remove network
-        if: always()
-        run: docker network rm testnet || true
+        run: docker stop postgres || true
 
 
   deploy:
