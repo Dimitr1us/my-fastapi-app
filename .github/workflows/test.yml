@@ -78,7 +78,7 @@ jobs:
     steps:
       - name: Deploy via SSH
         run: |
-          ssh -p 58529 robinson@kubsu.tyvik.ru << 'EOF'
+          ssh -p 58529 robinson@kubsu.tyvik.ru << EOF
             podman login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
             podman pull $IMAGE
 
