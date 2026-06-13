@@ -40,14 +40,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Start PostgreSQL
+        run: |
+          docker run -d \
+            --name postgres \
+            -e POSTGRES_USER=kubsu \
+            -e POSTGRES_PASSWORD=kubsu \
+            -e POSTGRES_DB=kubsu \
+            -p 5432:5432 \
+            postgres:16
+
+          echo "Waiting for Postgres..."
+          for i in {1..20}; do
+            docker exec postgres pg_isready -U kubsu && break
+            sleep 2
+          done
+
       - name: Pull image
         run: docker pull $IMAGE
 
       - name: Run tests in container
         run: |
           docker run --rm \
-            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@host.docker.internal:5432/kubsu \
+            --network host \
+            -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@127.0.0.1:5432/kubsu \
             $IMAGE pytest -v
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker stop postgres || true
 
 
   deploy:
