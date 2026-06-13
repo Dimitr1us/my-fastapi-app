@@ -40,14 +40,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create Docker network
-        run: docker network create test-net
+      - name: Create docker network
+        run: docker network create testnet
 
       - name: Start PostgreSQL
         run: |
           docker run -d \
             --name postgres \
-            --network test-net \
+            --network testnet \
             -e POSTGRES_USER=kubsu \
             -e POSTGRES_PASSWORD=kubsu \
             -e POSTGRES_DB=kubsu \
@@ -65,13 +65,17 @@ jobs:
       - name: Run tests in container
         run: |
           docker run --rm \
-            --network test-net \
+            --network testnet \
             -e DATABASE_URL=postgresql+psycopg://kubsu:kubsu@postgres:5432/kubsu \
             $IMAGE pytest -v
 
-      - name: Stop PostgreSQL
+      - name: Stop Postgres
         if: always()
         run: docker rm -f postgres || true
+
+      - name: Remove network
+        if: always()
+        run: docker network rm testnet || true
 
 
   deploy:
@@ -81,17 +85,10 @@ jobs:
     steps:
       - name: Deploy via SSH
         run: |
-          ssh -p 58529 robinson@kubsu.tyvik.ru << EOF
-            set -e
-
-            echo "Logging into GHCR..."
-            echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io \
-              -u "${{ github.actor }}" --password-stdin
-
-            echo "Pulling image..."
+          ssh -p 58529 robinson@kubsu.tyvik.ru << 'EOF'
+            podman login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
             podman pull $IMAGE
 
-            echo "Restarting container..."
             podman stop myapp-container || true
             podman rm myapp-container || true
 
