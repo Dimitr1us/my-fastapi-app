@@ -10,7 +10,7 @@ COPY src/ src/
 
 RUN poetry config virtualenvs.create false
 
-RUN poetry install --with dev --no-root
+RUN poetry install --no-root --extras test
 
 ENV PYTHONPATH=/app/src
 
