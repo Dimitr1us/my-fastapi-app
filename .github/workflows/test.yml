@@ -87,6 +87,6 @@ jobs:
 
             podman run -d \
               --name myapp-container \
-              -p 60080:8097 \
+              --network host \
               $IMAGE
           EOF
